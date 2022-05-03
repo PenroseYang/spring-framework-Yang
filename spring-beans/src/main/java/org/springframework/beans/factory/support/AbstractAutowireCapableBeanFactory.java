@@ -268,6 +268,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 * For further types to ignore, invoke this method for each type.
 	 * @see org.springframework.beans.factory.BeanFactoryAware
 	 * @see org.springframework.context.ApplicationContextAware
+	 *
+	 * 这个方法的大致作用，是注入某一个对象的时候，不要解析依赖的这些属性。
+	 * 比如各种Aware，这些属性后面会有其他的工具注入进来
 	 */
 	public void ignoreDependencyInterface(Class<?> ifc) {
 		this.ignoredDependencyInterfaces.add(ifc);

@@ -134,6 +134,8 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * Create new XmlBeanDefinitionReader for the given bean factory.
 	 * @param registry the BeanFactory to load bean definitions into,
 	 * in the form of a BeanDefinitionRegistry
+	 *
+	 * 使用 Reader 来进行解析，Resource就真的是个文件
 	 */
 	public XmlBeanDefinitionReader(BeanDefinitionRegistry registry) {
 		super(registry);
@@ -298,9 +300,17 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * @param resource the resource descriptor for the XML file
 	 * @return the number of bean definitions found
 	 * @throws BeanDefinitionStoreException in case of loading or parsing errors
+	 *
+	 * Resource 就只是文件而已，基本上就是二进制。
+	 * 至于里面是什么含义的，封装在了这个 Reader 里面
 	 */
 	@Override
 	public int loadBeanDefinitions(Resource resource) throws BeanDefinitionStoreException {
+		/**
+		 * (1) 封装资源文件。当进入XmlBeanDefinitionReader后首先对参数Resource使用 EncodeResource 类进行封装；
+		 *
+		 * EncodeResource 类是用来做文件的编码处理的，通常这里不传编码，如果传了就用传的东西
+		 */
 		return loadBeanDefinitions(new EncodedResource(resource));
 	}
 
@@ -322,17 +332,28 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 			currentResources = new HashSet<>(4);
 			this.resourcesCurrentlyBeingLoaded.set(currentResources);
 		}
+		/**
+		 * currentResources 是一个 Set，用来做去重处理的
+		 * (我猜下面这个的意思应该不是循环依赖)
+		 */
 		if (!currentResources.add(encodedResource)) {
 			throw new BeanDefinitionStoreException(
 					"Detected cyclic loading of " + encodedResource + " - check your import definitions!");
 		}
 		try {
+			/**
+			 * (2) 获取输入流。从Resource中获取对应的InputStream并构造InputSource
+			 */
 			InputStream inputStream = encodedResource.getResource().getInputStream();
 			try {
+				// InputSource 是SAX方式解析XML用的类
 				InputSource inputSource = new InputSource(inputStream);
+
 				if (encodedResource.getEncoding() != null) {
 					inputSource.setEncoding(encodedResource.getEncoding());
 				}
+
+				// 通过构造的InputSource实例和Resource实例继续调用函数 doLoadBeanDefinitions
 				return doLoadBeanDefinitions(inputSource, encodedResource.getResource());
 			}
 			finally {
@@ -388,9 +409,25 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	protected int doLoadBeanDefinitions(InputSource inputSource, Resource resource)
 			throws BeanDefinitionStoreException {
 		try {
+			/**
+			 * 走到这里，两件事
+			 * (1) 把Resource通过SAX解析成一个，可读的XML文件的 Document
+			 *
+			 * XML知识点：
+			 * （1） XML基本理解成key-value结构，成对出现
+			 * （2） Document是树状对象，Element是树里面的元素
+			 */
 			Document doc = doLoadDocument(inputSource, resource);
+			/**
+			 * (2) XML文件注册成 Bean
+			 * 你要看的重点估计就在这里面了!!!
+			 */
 			return registerBeanDefinitions(doc, resource);
 		}
+
+		/**
+		 * 底下一排的 catch 就不看了吧
+		 */
 		catch (BeanDefinitionStoreException ex) {
 			throw ex;
 		}
@@ -426,6 +463,11 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * @see DocumentLoader#loadDocument
 	 */
 	protected Document doLoadDocument(InputSource inputSource, Resource resource) throws Exception {
+		/**
+		 * 这里没必要进去看的太细致，简略做一些笔记
+		 * (1) XML文件上面几排套话，是用来进行格式校验，validate用的
+		 * (2) 过了前面几行namespace以及其他
+		 */
 		return this.documentLoader.loadDocument(inputSource, getEntityResolver(), this.errorHandler,
 				getValidationModeForResource(resource), isNamespaceAware());
 	}
@@ -503,8 +545,16 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * @see BeanDefinitionDocumentReader#registerBeanDefinitions
 	 */
 	public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
+		/**
+		 * 这个Reader跟前面的Reader不一样，前面的是XML的SAX解析Reader，返回的是树状的Document
+		 * 这里的Reader是从树形Document 里面解析Bean拿来注册的
+		 */
 		BeanDefinitionDocumentReader documentReader = createBeanDefinitionDocumentReader();
+
 		int countBefore = getRegistry().getBeanDefinitionCount();
+		/**
+		 * 真正开始了注册行为
+		 */
 		documentReader.registerBeanDefinitions(doc, createReaderContext(resource));
 		return getRegistry().getBeanDefinitionCount() - countBefore;
 	}

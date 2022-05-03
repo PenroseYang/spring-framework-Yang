@@ -51,6 +51,7 @@ import org.springframework.lang.Nullable;
  *
  * Resource 这个接口就真的只是一个文件而已，各种文件的抽象方法。到目前为止都没有关心过文件的真正类型。
  * 抽出来的全都是通用的属性
+ * 至于里面是什么含义的，封装在了这个 Reader 里面
  */
 public interface Resource extends InputStreamSource {
 
