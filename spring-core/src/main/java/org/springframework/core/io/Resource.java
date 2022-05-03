@@ -48,6 +48,9 @@ import org.springframework.lang.Nullable;
  * @see ClassPathResource
  * @see ByteArrayResource
  * @see InputStreamResource
+ *
+ * Resource 这个接口就真的只是一个文件而已，各种文件的抽象方法。到目前为止都没有关心过文件的真正类型。
+ * 抽出来的全都是通用的属性
  */
 public interface Resource extends InputStreamSource {
 

@@ -40,6 +40,9 @@ import org.springframework.util.StringUtils;
  * @since 28.12.2003
  * @see ClassLoader#getResourceAsStream(String)
  * @see Class#getResourceAsStream(String)
+ *
+ * 这一层主要是做的交互上的转换，把用户在外层输入的，基于 classPath 的路径，转换成真正系统的路径
+ * 后面需求的实际上是 InputStream
  */
 public class ClassPathResource extends AbstractFileResolvingResource {
 

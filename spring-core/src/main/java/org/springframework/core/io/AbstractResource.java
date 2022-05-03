@@ -39,7 +39,8 @@ import org.springframework.util.ResourceUtils;
  * throw an exception; and "toString" will return the description.
  *
  * @author Juergen Hoeller
- * @since 28.12.2003
+ * @since 28.12.2003 (这些代码都好古老啊)
+ *
  */
 public abstract class AbstractResource implements Resource {
 

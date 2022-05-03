@@ -37,6 +37,8 @@ import java.io.InputStream;
  * @see Resource
  * @see InputStreamResource
  * @see ByteArrayResource
+ *
+ * 这个接口就只是标明了位置，并不管怎么解析。只返回二进制，用到的实际内容需要用户自己解析出来
  */
 public interface InputStreamSource {
 
