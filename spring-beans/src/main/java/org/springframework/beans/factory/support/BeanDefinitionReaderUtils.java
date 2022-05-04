@@ -53,6 +53,9 @@ public class BeanDefinitionReaderUtils {
 	 * (can be {@code null} to just register bean classes by name)
 	 * @return the bean definition
 	 * @throws ClassNotFoundException if the bean class could not be loaded
+	 *
+	 * 在这里创建的 BeanDefinition ，可以说是非常随意了
+	 * 基本上在这里只保存了 className 或者这个 Clazz
 	 */
 	public static AbstractBeanDefinition createBeanDefinition(
 			@Nullable String parentName, @Nullable String className, @Nullable ClassLoader classLoader) throws ClassNotFoundException {

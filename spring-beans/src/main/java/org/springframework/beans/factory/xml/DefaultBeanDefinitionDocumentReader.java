@@ -179,16 +179,24 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	/**
 	 * Parse the elements at the root level in the document:
 	 * "import", "alias", "bean".
-	 * @param root the DOM root element of the document
+	 *
+	 * 这里才开始重点：
+	 * 这前面是 BeanDefinitionReader，正在 loadBeanDefinitions ，往容器里面注入
+	 * 目前基本上是在解析XML文件
 	 */
 	protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) {
 		if (delegate.isDefaultNamespace(root)) {
 			NodeList nl = root.getChildNodes();
+			// 遍历XML树里面所有的节点
 			for (int i = 0; i < nl.getLength(); i++) {
 				Node node = nl.item(i);
 				if (node instanceof Element) {
 					Element ele = (Element) node;
 					if (delegate.isDefaultNamespace(ele)) {
+						/**
+						 * 这里分两种情况
+						 * 默认的<bean id=xxx></> 的走这个
+						 */
 						parseDefaultElement(ele, delegate);
 					}
 					else {
@@ -198,20 +206,38 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 			}
 		}
 		else {
+			/**
+			 * 开启各种 Enable的那种括号，走这个
+			 */
 			delegate.parseCustomElement(root);
 		}
 	}
 
+	/**
+	 * 默认标签的解析，开始(这里对应了书里面的第三章)
+	 *
+	 * 这个方法基本上，就是根据 XML 里面的标签，来决定使用哪种解析方式
+	 * 外层是一个for循环，这里只遍历一个节点
+	 */
 	private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate delegate) {
+		// <import>
 		if (delegate.nodeNameEquals(ele, IMPORT_ELEMENT)) {
 			importBeanDefinitionResource(ele);
 		}
+		// <alias>
 		else if (delegate.nodeNameEquals(ele, ALIAS_ELEMENT)) {
 			processAliasRegistration(ele);
 		}
+
+		/**
+		 * <bean>
+		 * 这个方法就是重点了！
+		 */
 		else if (delegate.nodeNameEquals(ele, BEAN_ELEMENT)) {
 			processBeanDefinition(ele, delegate);
 		}
+
+		// <beans>
 		else if (delegate.nodeNameEquals(ele, NESTED_BEANS_ELEMENT)) {
 			// recurse
 			doRegisterBeanDefinitions(ele);
@@ -320,6 +346,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 */
 	protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate) {
 		BeanDefinitionHolder bdHolder = delegate.parseBeanDefinitionElement(ele);
+
 		if (bdHolder != null) {
 			bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
 			try {

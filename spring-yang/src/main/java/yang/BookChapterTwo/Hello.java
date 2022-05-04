@@ -31,6 +31,7 @@ public class Hello {
 		BeanFactory beanFactory = new DefaultListableBeanFactory();
 		BeanDefinitionReader bdr = new XmlBeanDefinitionReader((BeanDefinitionRegistry) beanFactory);
 		bdr.loadBeanDefinitions(resource);
+
 		Hello hello = (Hello)beanFactory.getBean("hello");
 		hello.sayHello();
 	}

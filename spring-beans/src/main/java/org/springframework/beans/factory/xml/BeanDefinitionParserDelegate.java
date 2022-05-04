@@ -402,6 +402,7 @@ public class BeanDefinitionParserDelegate {
 	 */
 	@Nullable
 	public BeanDefinitionHolder parseBeanDefinitionElement(Element ele) {
+		// 跳
 		return parseBeanDefinitionElement(ele, null);
 	}
 
@@ -412,6 +413,10 @@ public class BeanDefinitionParserDelegate {
 	 */
 	@Nullable
 	public BeanDefinitionHolder parseBeanDefinitionElement(Element ele, @Nullable BeanDefinition containingBean) {
+		/**
+		 * (1) 从 XML 文件里面读取这个Bean的基本属性
+		 * id、name、alias这些属性都读出来
+		 */
 		String id = ele.getAttribute(ID_ATTRIBUTE);
 		String nameAttr = ele.getAttribute(NAME_ATTRIBUTE);
 
@@ -421,6 +426,11 @@ public class BeanDefinitionParserDelegate {
 			aliases.addAll(Arrays.asList(nameArr));
 		}
 
+		/**
+		 * 首先把 beanName 赋值成 id
+		 * StringUtils.hasText 基本上就是 StringUtils.isNotBlank非空判断
+		 * 最后把 beanName 赋值成第一个 alias
+		 */
 		String beanName = id;
 		if (!StringUtils.hasText(beanName) && !aliases.isEmpty()) {
 			beanName = aliases.remove(0);
@@ -430,11 +440,16 @@ public class BeanDefinitionParserDelegate {
 			}
 		}
 
+		// 用 Set 做一波去重
 		if (containingBean == null) {
 			checkNameUniqueness(beanName, aliases, ele);
 		}
 
 		AbstractBeanDefinition beanDefinition = parseBeanDefinitionElement(ele, beanName, containingBean);
+
+		/**
+		 * 如果上面没有找到指定的BeanName，下面开始生成出一个BeanName出来
+		 */
 		if (beanDefinition != null) {
 			if (!StringUtils.hasText(beanName)) {
 				try {
@@ -478,6 +493,11 @@ public class BeanDefinitionParserDelegate {
 	protected void checkNameUniqueness(String beanName, List<String> aliases, Element beanElement) {
 		String foundName = null;
 
+		/**
+		 * 这里实际上也就是用这个 usedNames ，做了一个去重判断
+		 * 这是一个 Set，
+		 * 如果查到了就报错，否则就add
+		 */
 		if (StringUtils.hasText(beanName) && this.usedNames.contains(beanName)) {
 			foundName = beanName;
 		}
@@ -512,17 +532,32 @@ public class BeanDefinitionParserDelegate {
 		}
 
 		try {
+			/**
+			 * (1) 用 className 和 parentName 两个属性构建出 BeanDefinition
+			 * 基本上就是保存了一下，没别的
+			 */
 			AbstractBeanDefinition bd = createBeanDefinition(className, parent);
 
+			// (2) 解析各种元素
 			parseBeanDefinitionAttributes(ele, beanName, containingBean, bd);
-			bd.setDescription(DomUtils.getChildElementValueByTagName(ele, DESCRIPTION_ELEMENT));
 
+			bd.setDescription(DomUtils.getChildElementValueByTagName(ele, DESCRIPTION_ELEMENT));
+			// (3) 解析Meta元素(没卵用)
 			parseMetaElements(ele, bd);
+
+			/**
+			 * (4) 下面是两个方法替换，lookup-method
+			 * 基本上都是把本来的Bean里面的某一个方法，替换成另一个Bean 里面的方法
+			 */
 			parseLookupOverrideSubElements(ele, bd.getMethodOverrides());
+			// (5) replace-method方法替换
 			parseReplacedMethodSubElements(ele, bd.getMethodOverrides());
 
+			// (6) 解析构造器 <cosntructor> 标签，基本上也只是把里面的值封装了一下
 			parseConstructorArgElements(ele, bd);
+			// (7) 解析子元素 todo 目前进度停在这里了！！！好想接着看啊
 			parsePropertyElements(ele, bd);
+			// (8)
 			parseQualifierElements(ele, bd);
 
 			bd.setResource(this.readerContext.getResource());
@@ -552,6 +587,9 @@ public class BeanDefinitionParserDelegate {
 	 * @param beanName bean name
 	 * @param containingBean containing bean definition
 	 * @return a bean definition initialized according to the bean element attributes
+	 *
+	 * 这个方法下面基本上有用的就是， bd.setXXX 那一类的方法了
+	 * 从当前的这个 <bean> </> 里面解析各种元素出来，塞入到 BeanDefinition 里面去
 	 */
 	public AbstractBeanDefinition parseBeanDefinitionAttributes(Element ele, String beanName,
 			@Nullable BeanDefinition containingBean, AbstractBeanDefinition bd) {
@@ -639,12 +677,17 @@ public class BeanDefinitionParserDelegate {
 	protected AbstractBeanDefinition createBeanDefinition(@Nullable String className, @Nullable String parentName)
 			throws ClassNotFoundException {
 
+		// 跳
 		return BeanDefinitionReaderUtils.createBeanDefinition(
 				parentName, className, this.readerContext.getBeanClassLoader());
 	}
 
 	/**
 	 * Parse the meta elements underneath the given element, if any.
+	 *
+	 * Meta 元素这些基本没啥用
+	 * XML解析的时候，逐层遍历，把 Meta元素解析出来，然后用 key-value的形式，塞入到BeanDefinition 里面去
+	 * 如果要用的话，也必须 beanDefinition.getAttribute(CATEGORY_META_KEY) 才能拿出来，所以基本用不上
 	 */
 	public void parseMetaElements(Element ele, BeanMetadataAttributeAccessor attributeAccessor) {
 		NodeList nl = ele.getChildNodes();
@@ -695,7 +738,9 @@ public class BeanDefinitionParserDelegate {
 		NodeList nl = beanEle.getChildNodes();
 		for (int i = 0; i < nl.getLength(); i++) {
 			Node node = nl.item(i);
+			// 遍历所有的子元素，找到 constructor-args元素
 			if (isCandidateElement(node) && nodeNameEquals(node, CONSTRUCTOR_ARG_ELEMENT)) {
+				// 之后需要找到和这个元素对应的构造器，又封装了一个方法来找这个构造器
 				parseConstructorArgElement((Element) node, bd);
 			}
 		}
@@ -729,6 +774,9 @@ public class BeanDefinitionParserDelegate {
 
 	/**
 	 * Parse lookup-override sub-elements of the given bean element.
+	 *
+	 * lookup-method 是一个Bean里面的某一个方法本来要返回某个bean
+	 * 然后在xml里面配了一下，动态地让它返回另一个Bean
 	 */
 	public void parseLookupOverrideSubElements(Element beanEle, MethodOverrides overrides) {
 		NodeList nl = beanEle.getChildNodes();
@@ -738,6 +786,11 @@ public class BeanDefinitionParserDelegate {
 				Element ele = (Element) node;
 				String methodName = ele.getAttribute(NAME_ATTRIBUTE);
 				String beanRef = ele.getAttribute(BEAN_ELEMENT);
+
+				/**
+				 * 最后起作用的，或者说塞回到BeanDefinition 里面去的就是这个LookipOverride对象
+				 * 看它的构造函数就能猜到，是把 method 和要动态替换的 bean 做了映射
+				 */
 				LookupOverride override = new LookupOverride(methodName, beanRef);
 				override.setSource(extractSource(ele));
 				overrides.addOverride(override);
@@ -756,6 +809,12 @@ public class BeanDefinitionParserDelegate {
 				Element replacedMethodEle = (Element) node;
 				String name = replacedMethodEle.getAttribute(NAME_ATTRIBUTE);
 				String callback = replacedMethodEle.getAttribute(REPLACER_ATTRIBUTE);
+
+				/**
+				 * 这里的 ReplaceOverride 是继承自 MethodOverride
+				 * 看构造函数也是把 name 和 要动态替换的某一个方法映射了一下
+				 * callback代表的那个动态替换方法的类，实际上是实现了某一个特定的接口，里面就只有这一个等着给别人替的方法
+				 */
 				ReplaceOverride replaceOverride = new ReplaceOverride(name, callback);
 				// Look for arg-type match elements.
 				List<Element> argTypeEles = DomUtils.getChildElementsByTagName(replacedMethodEle, ARG_TYPE_ELEMENT);
@@ -776,9 +835,12 @@ public class BeanDefinitionParserDelegate {
 	 * Parse a constructor-arg element.
 	 */
 	public void parseConstructorArgElement(Element ele, BeanDefinition bd) {
+		// 首先从 constructor 上面找到对应的index，type，name
 		String indexAttr = ele.getAttribute(INDEX_ATTRIBUTE);
 		String typeAttr = ele.getAttribute(TYPE_ATTRIBUTE);
 		String nameAttr = ele.getAttribute(NAME_ATTRIBUTE);
+
+		// 如果指明了某一个属性的index的话，相当于执行构造函数，传参顺序以你传的为准
 		if (StringUtils.hasLength(indexAttr)) {
 			try {
 				int index = Integer.parseInt(indexAttr);
@@ -788,7 +850,9 @@ public class BeanDefinitionParserDelegate {
 				else {
 					try {
 						this.parseState.push(new ConstructorArgumentEntry(index));
+						// 解析构造函数某个位置上的 value
 						Object value = parsePropertyValue(ele, bd, null);
+
 						ConstructorArgumentValues.ValueHolder valueHolder = new ConstructorArgumentValues.ValueHolder(value);
 						if (StringUtils.hasLength(typeAttr)) {
 							valueHolder.setType(typeAttr);
@@ -801,6 +865,13 @@ public class BeanDefinitionParserDelegate {
 							error("Ambiguous constructor-arg entries for index " + index, ele);
 						}
 						else {
+							/**
+							 * 这里是关键方法
+							 * 目前看来，这里并没有解析该用哪个构造器
+							 * 只是把 xml 里面的 <constructor-args> 参数给解析了出来
+							 * 一般是 index-value 或者 name-value 的组合，某个位置上传什么值，或者某一个名字的参数传什么值
+							 * 解析好了之后，就封装起来做Map了
+							 */
 							bd.getConstructorArgumentValues().addIndexedArgumentValue(index, valueHolder);
 						}
 					}
@@ -813,10 +884,13 @@ public class BeanDefinitionParserDelegate {
 				error("Attribute 'index' of tag 'constructor-arg' must be an integer", ele);
 			}
 		}
+		// 如果没指明顺序的话，传参顺序就按照默认的，跟上面是分开处理的
 		else {
 			try {
 				this.parseState.push(new ConstructorArgumentEntry());
+
 				Object value = parsePropertyValue(ele, bd, null);
+
 				ConstructorArgumentValues.ValueHolder valueHolder = new ConstructorArgumentValues.ValueHolder(value);
 				if (StringUtils.hasLength(typeAttr)) {
 					valueHolder.setType(typeAttr);
@@ -825,6 +899,10 @@ public class BeanDefinitionParserDelegate {
 					valueHolder.setName(nameAttr);
 				}
 				valueHolder.setSource(extractSource(ele));
+				/**
+				 * 这里跟上面，上面使用 index映射value这里用 name映射value
+				 * 因为映射方式不一样，放在了不同的容器里面以作分隔
+				 */
 				bd.getConstructorArgumentValues().addGenericArgumentValue(valueHolder);
 			}
 			finally {
@@ -911,6 +989,10 @@ public class BeanDefinitionParserDelegate {
 				"<property> element for property '" + propertyName + "'" :
 				"<constructor-arg> element");
 
+		/**
+		 * <constructor>是一个大的节点
+		 * 里面有一大堆的小节点，各种<constructor-args>，下面遍历的时候，要过滤一些不要在当前解析的节点，比如Meta-Data
+		 */
 		// Should only have one child element: ref, value, list, etc.
 		NodeList nl = ele.getChildNodes();
 		Element subElement = null;
@@ -928,8 +1010,14 @@ public class BeanDefinitionParserDelegate {
 			}
 		}
 
+		/**
+		 * 至于这下面的，RefAttribute 和 ValueAttribute
+		 * 实际上是 <constructor-args> 后面跟着的value，就是给构造器传的参数，可能是写死的 String，也可能是 Bean引用
+		 * ref就是Bean引用，Value就是写死的String
+		 */
 		boolean hasRefAttribute = ele.hasAttribute(REF_ATTRIBUTE);
 		boolean hasValueAttribute = ele.hasAttribute(VALUE_ATTRIBUTE);
+		// 某一个值不可能同时是 ref和value
 		if ((hasRefAttribute && hasValueAttribute) ||
 				((hasRefAttribute || hasValueAttribute) && subElement != null)) {
 			error(elementName +
@@ -941,15 +1029,28 @@ public class BeanDefinitionParserDelegate {
 			if (!StringUtils.hasText(refName)) {
 				error(elementName + " contains empty 'ref' attribute", ele);
 			}
+			// 这里仅仅是把 xml 里面的值给考出来了，封装到这个对象里面，并没有开始解析
 			RuntimeBeanReference ref = new RuntimeBeanReference(refName);
 			ref.setSource(extractSource(ele));
 			return ref;
 		}
 		else if (hasValueAttribute) {
+			// 这里也仅仅是把 xml 里面的值封装进来了，并没有做过多的解析
 			TypedStringValue valueHolder = new TypedStringValue(ele.getAttribute(VALUE_ATTRIBUTE));
 			valueHolder.setSource(extractSource(ele));
 			return valueHolder;
 		}
+
+		/*
+		constructor 里面的子元素，类似于：
+		<constructor-arg name="dream">
+	        <list>
+	            <value>soldier</value>
+	            <value>scientist</value>
+	            <value>pilot</value>
+	        </list>
+	    </constructor-arg>
+		 */
 		else if (subElement != null) {
 			return parsePropertySubElement(subElement, bd);
 		}
@@ -1025,6 +1126,8 @@ public class BeanDefinitionParserDelegate {
 			nullHolder.setSource(extractSource(ele));
 			return nullHolder;
 		}
+
+		// 从这里可以看出，就是各种类型的子元素解析
 		else if (nodeNameEquals(ele, ARRAY_ELEMENT)) {
 			return parseArrayElement(ele, bd);
 		}
