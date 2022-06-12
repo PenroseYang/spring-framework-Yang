@@ -54,13 +54,16 @@ import org.springframework.lang.Nullable;
  * synchronization other than for purposes of lazy initialization within the
  * FactoryBean itself (or the like).
  *
+ * @param <T> the bean type
  * @author Rod Johnson
  * @author Juergen Hoeller
- * @since 08.03.2003
- * @param <T> the bean type
  * @see org.springframework.beans.factory.BeanFactory
  * @see org.springframework.aop.framework.ProxyFactoryBean
  * @see org.springframework.jndi.JndiObjectFactoryBean
+ * <p>
+ * BeanFactory 和 FactoryBean，很熟悉的两个东西
+ * BeanFactory就是容器自身，可以看成一个Map
+ * FactoryBean，是一种工厂类，获取到FactoryBean的时候，获取的不是这个工厂，而是工厂生产出来的Bean
  */
 public interface FactoryBean<T> {
 
@@ -77,9 +80,12 @@ public interface FactoryBean<T> {
 	 * will not throw a FactoryBeanNotInitializedException in this case anymore.
 	 * FactoryBean implementations are encouraged to throw
 	 * FactoryBeanNotInitializedException themselves now, as appropriate.
+	 *
 	 * @return an instance of the bean (can be {@code null})
 	 * @throws Exception in case of creation errors
 	 * @see FactoryBeanNotInitializedException
+	 * <p>
+	 * 如果从容器里面拿到的是一个 FactoryBean的话，实际上拿到的是这个FactoryBean 调用getObject 方法生成出来的对象
 	 */
 	@Nullable
 	T getObject() throws Exception;
@@ -99,6 +105,7 @@ public interface FactoryBean<T> {
 	 * <p><b>NOTE:</b> Autowiring will simply ignore FactoryBeans that return
 	 * {@code null} here. Therefore it is highly recommended to implement
 	 * this method properly, using the current state of the FactoryBean.
+	 *
 	 * @return the type of object that this FactoryBean creates,
 	 * or {@code null} if not known at the time of the call
 	 * @see ListableBeanFactory#getBeansOfType
@@ -127,9 +134,12 @@ public interface FactoryBean<T> {
 	 * {@code isSingleton()} implementation returns {@code false}.
 	 * <p>The default implementation returns {@code true}, since a
 	 * {@code FactoryBean} typically manages a singleton instance.
+	 *
 	 * @return whether the exposed object is a singleton
 	 * @see #getObject()
 	 * @see SmartFactoryBean#isPrototype()
+	 * <p>
+	 * 是不是单例的，默认是true
 	 */
 	default boolean isSingleton() {
 		return true;

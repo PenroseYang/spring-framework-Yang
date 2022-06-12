@@ -24,6 +24,7 @@ public class Hello {
 	 * https://blog.csdn.net/u010316188/article/details/98891028
 	 * (3)
 	 * 晚上来就能敲断点了！！！
+	 *
 	 * @param args
 	 */
 	public static void main(String[] args) {
@@ -32,7 +33,7 @@ public class Hello {
 		BeanDefinitionReader bdr = new XmlBeanDefinitionReader((BeanDefinitionRegistry) beanFactory);
 		bdr.loadBeanDefinitions(resource);
 
-		Hello hello = (Hello)beanFactory.getBean("hello");
+		Hello hello = (Hello) beanFactory.getBean("hello");
 		hello.sayHello();
 	}
 

@@ -270,7 +270,15 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		// Absolute or relative?
 		if (absoluteLocation) {
 			try {
+				/*
+				 * 这个方法里面核心基本上也就这样
+				 * (1) 先在<beans>标签里面找到对应的 <import> 标签，然后通过loadBeanDefinition 方法，完成加载
+				 * 这里的<import> 标签估计也对应于，Configuration 上面的 @Import 标签
+				 * (2) 加载到一半的时候，先把import的这个加载完，这里的加载也就是把BeanName存放到Map里面去
+				 */
 				int importCount = getReaderContext().getReader().loadBeanDefinitions(location, actualResources);
+
+
 				if (logger.isDebugEnabled()) {
 					logger.debug("Imported " + importCount + " bean definitions from URL location [" + location + "]");
 				}
@@ -283,6 +291,11 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 			try {
 				int importCount;
 				Resource relativeResource = getReaderContext().getResource().createRelative(location);
+
+				/**
+				 * 这个方法里面区分了一个绝对地址和相对地址
+				 * 其实也就是用来找文件的方法不一样，最后还是找到这份文件，然后 loadBeanDefinition方法加载
+				 */
 				if (relativeResource.exists()) {
 					importCount = getReaderContext().getReader().loadBeanDefinitions(relativeResource);
 					actualResources.add(relativeResource);
@@ -341,7 +354,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 */
 	protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate) {
 
-		/**
+		/*
 		 * (1) 这个方法里面，开始解析xml的树结构
 		 * 走完之后，就已经把 BeanDefinition 里面需要的各种name、id啥的都存进来了
 		 */
@@ -355,17 +368,18 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 			bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
 
 			try {
-				/**
+				/*
 				 * (3) 把 BeanDefinition 里面的东西都注册到容器里面
+				 * 这里也就是把Definition 送进了Map里面，没什么别的操作
 				 */
 				BeanDefinitionReaderUtils.registerBeanDefinition(bdHolder, getReaderContext().getRegistry());
 			} catch (BeanDefinitionStoreException ex) {
 				getReaderContext().error("Failed to register bean definition with name '" +
 						bdHolder.getBeanName() + "'", ele, ex);
 			}
-			/**
+			/*
 			 * (4) Send registration event.
-			 * 发送监听事件
+			 * 发送监听事件(这里是留给开发人员扩展的，目前Spring在这里没做任何逻辑)
 			 */
 			getReaderContext().fireComponentRegistered(new BeanComponentDefinition(bdHolder));
 		}

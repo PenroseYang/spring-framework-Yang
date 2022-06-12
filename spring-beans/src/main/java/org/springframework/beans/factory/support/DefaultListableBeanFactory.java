@@ -788,7 +788,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 
 		/**
-		 *
+		 * 去容器里面找一下这个Bean
+		 * 如果Bean已经存在，并且优先级一样的话，报错，优先级不一样的话，当前优先级高的话，可以覆盖之前的Bean
 		 */
 		BeanDefinition existingDefinition = this.beanDefinitionMap.get(beanName);
 		if (existingDefinition != null) {
@@ -819,6 +820,11 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			// 覆盖之前的Bean
 			this.beanDefinitionMap.put(beanName, beanDefinition);
 		} else {
+			/**
+			 * 走到这个分支的话，就是容器里面没有这个Bean
+			 * 这个判断应该是当前是不是已经开始生成Bean了，如果已经开始了，就得补一些注册
+			 * 没开始的话走到下面，因为容器里也没有，直接塞进去就ok了
+			 */
 			if (hasBeanCreationStarted()) {
 				// Cannot modify startup-time collection elements anymore (for stable iteration)
 				synchronized (this.beanDefinitionMap) {
@@ -842,6 +848,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			this.frozenBeanDefinitionNames = null;
 		}
 
+		// 这里不知道干嘛的，估计没啥用，就到上面的，放进Map里面截止
 		if (existingDefinition != null || containsSingleton(beanName)) {
 			resetBeanDefinition(beanName);
 		} else if (isConfigurationFrozen()) {
