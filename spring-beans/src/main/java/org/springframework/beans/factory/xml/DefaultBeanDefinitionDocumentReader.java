@@ -16,18 +16,8 @@
 
 package org.springframework.beans.factory.xml;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.util.LinkedHashSet;
-import java.util.Set;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
 import org.springframework.beans.factory.BeanDefinitionStoreException;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
 import org.springframework.beans.factory.parsing.BeanComponentDefinition;
@@ -38,6 +28,15 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ResourceUtils;
 import org.springframework.util.StringUtils;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Default implementation of the {@link BeanDefinitionDocumentReader} interface that
@@ -75,6 +74,9 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	public static final String PROFILE_ATTRIBUTE = "profile";
 
 
+	/**
+	 * 看样子每个类里面都有这么一个 logger，只要用就行了！！！妙呀！
+	 */
 	protected final Log logger = LogFactory.getLog(getClass());
 
 	@Nullable
@@ -89,12 +91,16 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 * (or DTD, historically).
 	 * <p>Opens a DOM Document; then initializes the default settings
 	 * specified at the {@code <beans/>} level; then parses the contained bean definitions.
+	 * <p>
+	 * 这里的了两个入参，第一个是xml解析出来的树状结构 document，第二个是xml构造出来的阅读器
 	 */
 	@Override
 	public void registerBeanDefinitions(Document doc, XmlReaderContext readerContext) {
 		this.readerContext = readerContext;
 		logger.debug("Loading bean definitions");
 
+		// element这个root，在后面应该被当成了 document 树状结构的某种替身了
+		// 这就是二叉树的顶端，传这个下去也一样的
 		Element root = doc.getDocumentElement();
 
 		doRegisterBeanDefinitions(root);
@@ -117,11 +123,13 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		return getReaderContext().extractSource(ele);
 	}
 
-
 	/**
 	 * Register each bean definition within the given root {@code <beans/>} element.
+	 * 当前的参数root，就是xml解析出来的二叉树的，顶端的节点
+	 * 传这个值下来基本把一棵树都带下来了
 	 */
 	protected void doRegisterBeanDefinitions(Element root) {
+
 		// Any nested <beans> elements will cause recursion in this method. In
 		// order to propagate and preserve <beans> default-* attributes correctly,
 		// keep track of the current (parent) delegate, which may be null. Create
@@ -129,7 +137,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		// then ultimately reset this.delegate back to its original (parent) reference.
 		// this behavior emulates a stack of delegates without actually necessitating one.
 
-		// 专门处理解析逻辑
+		// 专门处理解析逻辑，前面解析命名空间没啥用，跳过去
 		BeanDefinitionParserDelegate parent = this.delegate;
 		this.delegate = createDelegate(getReaderContext(), root, parent);
 
@@ -148,26 +156,19 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 			}
 		}
 
+		preProcessXml(root);
 		/**
 		 * 中间的 parseBeanDefinition 最重要
 		 * 前面和后面都是留给子类进行扩展的
 		 */
-		preProcessXml(root);
 		parseBeanDefinitions(root, this.delegate);
-		postProcessXml(root);
 
+		postProcessXml(root);
 		this.delegate = parent;
 	}
 
-	/**
-	 * 这里构建出来的 BeanDefinitionParserDelegate 应该是很重要的类
-	 * 这里接受从 XMl 里面解析出来的 Document，然后解析成各种BeanDefinition
-	 *
-	 * @param readerContext
-	 * @param root
-	 * @param parentDelegate
-	 * @return
-	 */
+	//这里构建出来的 BeanDefinitionParserDelegate 应该是很重要的类
+	//这里接受从 XMl 里面解析出来的 Document，然后解析成各种BeanDefinition
 	protected BeanDefinitionParserDelegate createDelegate(
 			XmlReaderContext readerContext, Element root, @Nullable BeanDefinitionParserDelegate parentDelegate) {
 
@@ -179,7 +180,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	/**
 	 * Parse the elements at the root level in the document:
 	 * "import", "alias", "bean".
-	 *
+	 * <p>
 	 * 这里才开始重点：
 	 * 这前面是 BeanDefinitionReader，正在 loadBeanDefinitions ，往容器里面注入
 	 * 目前基本上是在解析XML文件
@@ -187,6 +188,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) {
 		if (delegate.isDefaultNamespace(root)) {
 			NodeList nl = root.getChildNodes();
+
 			// 遍历XML树里面所有的节点
 			for (int i = 0; i < nl.getLength(); i++) {
 				Node node = nl.item(i);
@@ -198,27 +200,23 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 						 * 默认的<bean id=xxx></> 的走这个
 						 */
 						parseDefaultElement(ele, delegate);
-					}
-					else {
+					} else {
 						delegate.parseCustomElement(ele);
 					}
 				}
 			}
-		}
-		else {
+		} else {
 			/**
-			 * 开启各种 Enable的那种括号，走这个
+			 * 开启各种 Enable 的那种括号，走这个
+			 * 在xml里面会写一些 enable 标签，走这里解析
 			 */
 			delegate.parseCustomElement(root);
 		}
 	}
 
-	/**
-	 * 默认标签的解析，开始(这里对应了书里面的第三章)
-	 *
-	 * 这个方法基本上，就是根据 XML 里面的标签，来决定使用哪种解析方式
-	 * 外层是一个for循环，这里只遍历一个节点
-	 */
+	// 默认标签的解析，开始(这个方法对应了书里面的第三章开头引言)
+	// 这个方法基本上，就是根据 XML 里面的标签，来决定使用哪种解析方式
+	// 外层是一个for循环，这里只遍历一个节点
 	private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate delegate) {
 		// <import>
 		if (delegate.nodeNameEquals(ele, IMPORT_ELEMENT)) {
@@ -231,7 +229,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 
 		/**
 		 * <bean>
-		 * 这个方法就是重点了！
+		 * 这个方法就是重点了！第三章第一节，从这个方法开始
 		 */
 		else if (delegate.nodeNameEquals(ele, BEAN_ELEMENT)) {
 			processBeanDefinition(ele, delegate);
@@ -264,8 +262,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		boolean absoluteLocation = false;
 		try {
 			absoluteLocation = ResourcePatternUtils.isUrl(location) || ResourceUtils.toURI(location).isAbsolute();
-		}
-		catch (URISyntaxException ex) {
+		} catch (URISyntaxException ex) {
 			// cannot convert to an URI, considering the location relative
 			// unless it is the well-known Spring prefix "classpath*:"
 		}
@@ -277,13 +274,11 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 				if (logger.isDebugEnabled()) {
 					logger.debug("Imported " + importCount + " bean definitions from URL location [" + location + "]");
 				}
-			}
-			catch (BeanDefinitionStoreException ex) {
+			} catch (BeanDefinitionStoreException ex) {
 				getReaderContext().error(
 						"Failed to import bean definitions from URL location [" + location + "]", ele, ex);
 			}
-		}
-		else {
+		} else {
 			// No URL -> considering resource location as relative to the current file.
 			try {
 				int importCount;
@@ -291,8 +286,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 				if (relativeResource.exists()) {
 					importCount = getReaderContext().getReader().loadBeanDefinitions(relativeResource);
 					actualResources.add(relativeResource);
-				}
-				else {
+				} else {
 					String baseLocation = getReaderContext().getResource().getURL().toString();
 					importCount = getReaderContext().getReader().loadBeanDefinitions(
 							StringUtils.applyRelativePath(baseLocation, location), actualResources);
@@ -300,11 +294,9 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 				if (logger.isDebugEnabled()) {
 					logger.debug("Imported " + importCount + " bean definitions from relative location [" + location + "]");
 				}
-			}
-			catch (IOException ex) {
+			} catch (IOException ex) {
 				getReaderContext().error("Failed to resolve current resource location", ele, ex);
-			}
-			catch (BeanDefinitionStoreException ex) {
+			} catch (BeanDefinitionStoreException ex) {
 				getReaderContext().error("Failed to import bean definitions from relative location [" + location + "]",
 						ele, ex);
 			}
@@ -331,8 +323,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		if (valid) {
 			try {
 				getReaderContext().getRegistry().registerAlias(name, alias);
-			}
-			catch (Exception ex) {
+			} catch (Exception ex) {
 				getReaderContext().error("Failed to register alias '" + alias +
 						"' for bean with name '" + name + "'", ele, ex);
 			}
@@ -343,21 +334,39 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	/**
 	 * Process the given bean element, parsing the bean definition
 	 * and registering it with the registry.
+	 * <p>
+	 * 入参 element ，是xml文件解析之后的，二叉树某一个节点
+	 * 对应于一个 <bean id="hello" class="yang.BookChapterTwo.Hello"></bean>
+	 * 这上层是有一个for循环的，二叉树的 <beans> 节点哪里开始进行循环，之后每一个 <bean> 都会走到这个方法来
 	 */
 	protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate) {
+
+		/**
+		 * (1) 这个方法里面，开始解析xml的树结构
+		 * 走完之后，就已经把 BeanDefinition 里面需要的各种name、id啥的都存进来了
+		 */
 		BeanDefinitionHolder bdHolder = delegate.parseBeanDefinitionElement(ele);
 
 		if (bdHolder != null) {
+			/**
+			 * (2) 如果上面解析完了之后，还有自定义标签，走这里解析
+			 * 自定义的标签，和官方支持的，不走一套方法
+			 */
 			bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
+
 			try {
-				// Register the final decorated instance.
+				/**
+				 * (3) 把 BeanDefinition 里面的东西都注册到容器里面
+				 */
 				BeanDefinitionReaderUtils.registerBeanDefinition(bdHolder, getReaderContext().getRegistry());
-			}
-			catch (BeanDefinitionStoreException ex) {
+			} catch (BeanDefinitionStoreException ex) {
 				getReaderContext().error("Failed to register bean definition with name '" +
 						bdHolder.getBeanName() + "'", ele, ex);
 			}
-			// Send registration event.
+			/**
+			 * (4) Send registration event.
+			 * 发送监听事件
+			 */
 			getReaderContext().fireComponentRegistered(new BeanComponentDefinition(bdHolder));
 		}
 	}
@@ -371,6 +380,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 * convert custom elements into standard Spring bean definitions, for example.
 	 * Implementors have access to the parser's bean definition reader and the
 	 * underlying XML resource, through the corresponding accessors.
+	 *
 	 * @see #getReaderContext()
 	 */
 	protected void preProcessXml(Element root) {
@@ -384,6 +394,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 * convert custom elements into standard Spring bean definitions, for example.
 	 * Implementors have access to the parser's bean definition reader and the
 	 * underlying XML resource, through the corresponding accessors.
+	 *
 	 * @see #getReaderContext()
 	 */
 	protected void postProcessXml(Element root) {
