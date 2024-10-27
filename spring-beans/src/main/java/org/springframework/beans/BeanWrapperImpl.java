@@ -16,49 +16,32 @@
 
 package org.springframework.beans;
 
-import java.beans.PropertyDescriptor;
-import java.lang.reflect.Method;
-import java.security.AccessControlContext;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.security.PrivilegedActionException;
-import java.security.PrivilegedExceptionAction;
-
 import org.springframework.core.ResolvableType;
 import org.springframework.core.convert.Property;
 import org.springframework.core.convert.TypeDescriptor;
 import org.springframework.lang.Nullable;
 import org.springframework.util.ReflectionUtils;
 
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.Method;
+import java.security.*;
+
 /**
- * Default {@link BeanWrapper} implementation that should be sufficient
- * for all typical use cases. Caches introspection results for efficiency.
+ * 默认的 {@link BeanWrapper} 实现，应该足够满足所有典型的使用场景。出于效率考虑，缓存内省结果。
  *
- * <p>Note: Auto-registers default property editors from the
- * {@code org.springframework.beans.propertyeditors} package, which apply
- * in addition to the JDK's standard PropertyEditors. Applications can call
- * the {@link #registerCustomEditor(Class, java.beans.PropertyEditor)} method
- * to register an editor for a particular instance (i.e. they are not shared
- * across the application). See the base class
- * {@link PropertyEditorRegistrySupport} for details.
+ * <p>注意：自动注册来自
+ * {@code org.springframework.beans.propertyeditors} 包的默认属性编辑器，这些编辑器
+ * 除了JDK的标准PropertyEditors外，还有其他应用。应用程序可以调用
+ * {@link #registerCustomEditor(Class, java.beans.PropertyEditor)} 方法
+ * 来为特定实例注册一个编辑器（即它们不在应用程序中共享）。有关详细信息，请参阅基类
+ * {@link PropertyEditorRegistrySupport}。
  *
- * <p><b>NOTE: As of Spring 2.5, this is - for almost all purposes - an
- * internal class.</b> It is just public in order to allow for access from
- * other framework packages. For standard application access purposes, use the
- * {@link PropertyAccessorFactory#forBeanPropertyAccess} factory method instead.
+ * <p><b>注意：从Spring 2.5开始，这几乎在所有目的上都是一个内部类。</b> 它只是为了允许从
+ * 其他框架包中访问而设为公开的。对于标准的应用程序访问目的，使用
+ * {@link PropertyAccessorFactory#forBeanPropertyAccess} 工厂方法代替。
  *
- * @author Rod Johnson
- * @author Juergen Hoeller
- * @author Rob Harrop
- * @author Stephane Nicoll
- * @since 15 April 2001
- * @see #registerCustomEditor
- * @see #setPropertyValues
- * @see #setPropertyValue
- * @see #getPropertyValue
- * @see #getPropertyType
- * @see BeanWrapper
  * @see PropertyEditorRegistrySupport
+ * @since 2001年4月15日
  */
 public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements BeanWrapper {
 
@@ -79,6 +62,7 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 	/**
 	 * Create a new empty BeanWrapperImpl. Wrapped instance needs to be set afterwards.
 	 * Registers default editors.
+	 *
 	 * @see #setWrappedInstance
 	 */
 	public BeanWrapperImpl() {
@@ -87,8 +71,9 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 
 	/**
 	 * Create a new empty BeanWrapperImpl. Wrapped instance needs to be set afterwards.
+	 *
 	 * @param registerDefaultEditors whether to register default editors
-	 * (can be suppressed if the BeanWrapper won't need any type conversion)
+	 *                               (can be suppressed if the BeanWrapper won't need any type conversion)
 	 * @see #setWrappedInstance
 	 */
 	public BeanWrapperImpl(boolean registerDefaultEditors) {
@@ -97,6 +82,7 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 
 	/**
 	 * Create a new BeanWrapperImpl for the given object.
+	 *
 	 * @param object the object wrapped by this BeanWrapper
 	 */
 	public BeanWrapperImpl(Object object) {
@@ -105,6 +91,7 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 
 	/**
 	 * Create a new BeanWrapperImpl, wrapping a new instance of the specified class.
+	 *
 	 * @param clazz class to instantiate and wrap
 	 */
 	public BeanWrapperImpl(Class<?> clazz) {
@@ -114,7 +101,8 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 	/**
 	 * Create a new BeanWrapperImpl for the given object,
 	 * registering a nested path that the object is in.
-	 * @param object the object wrapped by this BeanWrapper
+	 *
+	 * @param object     the object wrapped by this BeanWrapper
 	 * @param nestedPath the nested path of the object
 	 * @param rootObject the root object at the top of the path
 	 */
@@ -125,9 +113,10 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 	/**
 	 * Create a new BeanWrapperImpl for the given object,
 	 * registering a nested path that the object is in.
-	 * @param object the object wrapped by this BeanWrapper
+	 *
+	 * @param object     the object wrapped by this BeanWrapper
 	 * @param nestedPath the nested path of the object
-	 * @param parent the containing BeanWrapper (must not be {@code null})
+	 * @param parent     the containing BeanWrapper (must not be {@code null})
 	 */
 	private BeanWrapperImpl(Object object, String nestedPath, BeanWrapperImpl parent) {
 		super(object, nestedPath, parent);
@@ -137,9 +126,10 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 
 	/**
 	 * Set a bean instance to hold, without any unwrapping of {@link java.util.Optional}.
+	 *
 	 * @param object the actual target object
-	 * @since 4.3
 	 * @see #setWrappedInstance(Object)
+	 * @since 4.3
 	 */
 	public void setBeanInstance(Object object) {
 		this.wrappedObject = object;
@@ -157,6 +147,7 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 	/**
 	 * Set the class to introspect.
 	 * Needs to be called when the target object changes.
+	 *
 	 * @param clazz the class to introspect
 	 */
 	protected void setIntrospectionClass(Class<?> clazz) {
@@ -198,9 +189,10 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 	 * Convert the given value for the specified property to the latter's type.
 	 * <p>This method is only intended for optimizations in a BeanFactory.
 	 * Use the {@code convertIfNecessary} methods for programmatic conversion.
-	 * @param value the value to convert
+	 *
+	 * @param value        the value to convert
 	 * @param propertyName the target property
-	 * (note that nested or indexed properties are not supported here)
+	 *                     (note that nested or indexed properties are not supported here)
 	 * @return the new value, possibly the result of type conversion
 	 * @throws TypeMismatchException if type conversion failed
 	 */
@@ -298,12 +290,10 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 				try {
 					return AccessController.doPrivileged((PrivilegedExceptionAction<Object>)
 							() -> readMethod.invoke(getWrappedInstance(), (Object[]) null), acc);
-				}
-				catch (PrivilegedActionException pae) {
+				} catch (PrivilegedActionException pae) {
 					throw pae.getException();
 				}
-			}
-			else {
+			} else {
 				ReflectionUtils.makeAccessible(readMethod);
 				return readMethod.invoke(getWrappedInstance(), (Object[]) null);
 			}
@@ -322,12 +312,10 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 				try {
 					AccessController.doPrivileged((PrivilegedExceptionAction<Object>)
 							() -> writeMethod.invoke(getWrappedInstance(), value), acc);
-				}
-				catch (PrivilegedActionException ex) {
+				} catch (PrivilegedActionException ex) {
 					throw ex.getException();
 				}
-			}
-			else {
+			} else {
 				ReflectionUtils.makeAccessible(writeMethod);
 				writeMethod.invoke(getWrappedInstance(), value);
 			}

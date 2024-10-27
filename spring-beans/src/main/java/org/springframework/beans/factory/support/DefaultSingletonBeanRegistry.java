@@ -60,36 +60,39 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements SingletonBeanRegistry {
 
 	/*
+	 * 2024-03-20一直到这一天才算真正看明白，这一天距离跟崔崔一起在众运看书，已经过去快两年了
+	 *
 	 * 三级缓存，直接三个Map都写在这里了，在这里完整写一遍三级缓存：
-	 * (1) 第一级缓存是 singletonObjects ，存放初始化完全的Bean对象，一个结果
-	 * (2) 第三级缓存里面存放的是，bean初始化到一半的对象，这时候没有经过后置处理器处理，还没有进行初始化和属性注入
+	 * (1) 第一级缓存是 singletonObjects ，存放初始化完全的Bean对象，一个结果，这是真正的结束
+	 * (2) 第三级缓存里面存放的是一个lambda表达式或者说一个匿名内部类，就是那个factory实例；留下了一个刚被new出来的
+	 * bean实例，这个bean实例可能是FactoryBean调用getObject生成的，也可能是bean的默认构造方法生成出来的
+	 * 如果访问到第三级缓存，那就调用这个lambda表达式，把刚new出来的对象跑一遍AOP包装，获取新的包装类
 	 *
 	 * (3) 第二级缓存是 earlySingletonObjects，用来存放中间提前暴露的对象
-	 * 原因是并不是所有的bean都支持提前暴露，只有支持提前暴露的才会加入到二级缓存里面
-	 * 引入这一级主要是为了解决循环依赖问题
+	 * 第三级和第二级两级可以算是懒加载，这两级完全一样，就是不想提前跑
+	 * 而且第三级缓存的lambda表达式方法不能多次运行，因为AOP每次都能生成一个新的包装类，所以跑一次之后必须挪到第二级缓存里面来
+	 *
 	 *
 	 * 出现循环依赖的时候 A->B->A，流程是先new，再后置处理器，再属性注入，走到属性注入这一步的时候
 	 * 两边可能A里有一个属性是B，B里有一个属性是A，两边开始相互卡
-	 * (Spring 里面的Bean并不存在被后置处理器更改地址这回事，因为Bean里面存放的都是BeanWrapper，早就在外面又包装了一层
-	 * 更改地址根本不管用，只是改了里面的值)
 	 */
 	/**
-	 * Cache of singleton objects: bean name --> bean instance
-	 */
-	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
-
-	/**
-	 * Cache of singleton factories: bean name --> ObjectFactory
+	 * 单例工厂的缓存：bean名称 --> ObjectFactory      第一级
 	 */
 	private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
 
 	/**
-	 * Cache of early singleton objects: bean name --> bean instance
+	 * 早期单例对象的缓存：bean名称 --> bean实例        第二级
 	 */
 	private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
 
 	/**
-	 * Set of registered singletons, containing the bean names in registration order
+	 * 单例对象的缓存：bean名称 --> bean实例           第三级
+	 */
+	private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
+
+	/**
+	 * 注册的单例集合，包含按注册顺序的bean名称
 	 */
 	private final Set<String> registeredSingletons = new LinkedHashSet<>(256);
 
@@ -128,7 +131,7 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	private final Map<String, Set<String>> containedBeanMap = new ConcurrentHashMap<>(16);
 
 	/**
-	 * Map between dependent bean names: bean name --> Set of dependent bean names
+	 * 依赖bean名称之间的映射：bean名称 --> 依赖该bean的bean名称集合
 	 */
 	private final Map<String, Set<String>> dependentBeanMap = new ConcurrentHashMap<>(64);
 
@@ -169,24 +172,24 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	}
 
 	/**
-	 * Add the given singleton factory for building the specified singleton
-	 * if necessary.
-	 * <p>To be called for eager registration of singletons, e.g. to be able to
-	 * resolve circular references.
+	 * 添加给定的单例工厂以在必要时构建指定的单例。
+	 * <p>这个方法被调用是为了提前注册单例，例如，为了能够解决循环引用问题。
 	 *
-	 * @param beanName         the name of the bean
-	 * @param singletonFactory the factory for the singleton object
+	 * @param beanName         bean的名称
+	 * @param singletonFactory 单例对象的工厂
 	 */
 	protected void addSingletonFactory(String beanName, ObjectFactory<?> singletonFactory) {
-		Assert.notNull(singletonFactory, "Singleton factory must not be null");
+		Assert.notNull(singletonFactory, "单例工厂不能为空");
 		synchronized (this.singletonObjects) {
 			if (!this.singletonObjects.containsKey(beanName)) {
+				// 这里是把刚构造出来的bean实例保存在第三级Factories这一级缓存里面了
 				this.singletonFactories.put(beanName, singletonFactory);
 				this.earlySingletonObjects.remove(beanName);
 				this.registeredSingletons.add(beanName);
 			}
 		}
 	}
+
 
 	@Override
 	@Nullable
@@ -195,30 +198,36 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	}
 
 	/**
-	 * Return the (raw) singleton object registered under the given name.
-	 * <p>Checks already instantiated singletons and also allows for an early
-	 * reference to a currently created singleton (resolving a circular reference).
-	 *
-	 * @param beanName            the name of the bean to look for
-	 * @param allowEarlyReference whether early references should be created or not
-	 * @return the registered singleton object, or {@code null} if none found
+	 * 这下面标的这个注释，就是往三级缓存里面塞入值的地方
+	 * 可以看出来，进入三级缓存的时候，基本已经是半成品，至少后置处理器已经都走过了
+	 * <p>
+	 * {@link AbstractAutowireCapableBeanFactory#doCreateBean(java.lang.String, org.springframework.beans.factory.support.RootBeanDefinition, java.lang.Object[])}
 	 */
 	@Nullable
 	protected Object getSingleton(String beanName, boolean allowEarlyReference) {
 		/*
 		 * 这里就是三级缓存挨个刷
-		 * 第三级里面刷到了的话，就扔到第二级里面去
+		 * 第一级刷到直接返回
+		 * 第三级里面刷到了的话，就扔到第二级里面去（AOP包装一遍之后必须保存临时变量，下一次跑就不是这个包装了）
 		 */
 		Object singletonObject = this.singletonObjects.get(beanName);
 		if (singletonObject == null && isSingletonCurrentlyInCreation(beanName)) {
 			synchronized (this.singletonObjects) {
 				singletonObject = this.earlySingletonObjects.get(beanName);
+
+				/**
+				 * allowEarlyReference这个参数起控制作用，只有在循环依赖的情况下会走到这个分支里来
+				 */
 				if (singletonObject == null && allowEarlyReference) {
 					ObjectFactory<?> singletonFactory = this.singletonFactories.get(beanName);
 					if (singletonFactory != null) {
+						/**
+						 * 这个getObject 方法运行的时候，其实执行的是 getEarlyBeanReference 方法，全局搜一下，在一个lambda表达式里
+						 */
 						singletonObject = singletonFactory.getObject();
 						/*
 						 * 这里竟然是唯一一处往二级缓存里面添加对象的地方
+						 * 二级缓存里没有，三级缓存里刷到了，且支持提前暴露 allowEarlyReference == true，就调用getObject方法然后放到二级缓存里面去
 						 */
 						this.earlySingletonObjects.put(beanName, singletonObject);
 						this.singletonFactories.remove(beanName);
@@ -230,13 +239,12 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	}
 
 	/**
-	 * Return the (raw) singleton object registered under the given name,
-	 * creating and registering a new one if none registered yet.
+	 * 返回在给定名称下注册的（原始）单例对象，
+	 * 如果尚未注册，则创建并注册一个新的单例对象。
 	 *
-	 * @param beanName         the name of the bean
-	 * @param singletonFactory the ObjectFactory to lazily create the singleton
-	 *                         with, if necessary
-	 * @return the registered singleton object
+	 * @param beanName         bean的名称
+	 * @param singletonFactory 如果需要，用来懒加载创建单例的ObjectFactory
+	 * @return 注册的单例对象
 	 */
 	public Object getSingleton(String beanName, ObjectFactory<?> singletonFactory) {
 		Assert.notNull(beanName, "Bean name must not be null");
@@ -431,15 +439,19 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	}
 
 	/**
-	 * Register a dependent bean for the given bean,
-	 * to be destroyed before the given bean is destroyed.
+	 * 为给定的bean注册一个依赖的bean，
+	 * 在给定的bean销毁之前销毁这个依赖的bean。
 	 *
-	 * @param beanName          the name of the bean
-	 * @param dependentBeanName the name of the dependent bean
+	 * @param beanName          bean的名称
+	 * @param dependentBeanName 依赖bean的名称
 	 */
 	public void registerDependentBean(String beanName, String dependentBeanName) {
 		String canonicalName = canonicalName(beanName);
 
+		/*
+		 * 这里在维护这两个map，正反依赖两边都写
+		 * 在依赖的set里面两边对这些，不怕冲突
+		 */
 		synchronized (this.dependentBeanMap) {
 			Set<String> dependentBeans =
 					this.dependentBeanMap.computeIfAbsent(canonicalName, k -> new LinkedHashSet<>(8));
@@ -456,11 +468,10 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 	}
 
 	/**
-	 * Determine whether the specified dependent bean has been registered as
-	 * dependent on the given bean or on any of its transitive dependencies.
+	 * 确定指定的依赖bean是否已被注册为依赖于给定bean或其任何传递依赖。
 	 *
-	 * @param beanName          the name of the bean to check
-	 * @param dependentBeanName the name of the dependent bean
+	 * @param beanName          要检查的bean的名称
+	 * @param dependentBeanName 依赖bean的名称
 	 * @since 4.0
 	 */
 	protected boolean isDependent(String beanName, String dependentBeanName) {
@@ -469,15 +480,27 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 		}
 	}
 
+	/**
+	 * 确定指定的依赖bean是否已被注册为依赖于给定bean或其任何传递依赖。
+	 * 这个方法是校验两个类之间是否有依赖关系
+	 *
+	 * @param beanName          要检查的bean的名称
+	 * @param dependentBeanName 依赖bean的名称
+	 * @param alreadySeen       已经检查过的bean的集合，用于避免循环依赖
+	 * @return 如果指定的依赖bean已被注册为依赖于给定bean或其任何传递依赖，则返回true，否则返回false
+	 */
 	private boolean isDependent(String beanName, String dependentBeanName, @Nullable Set<String> alreadySeen) {
+		// 如果已经检查过该bean，直接返回false
 		if (alreadySeen != null && alreadySeen.contains(beanName)) {
 			return false;
 		}
+		// 获取规范化的bean名称
 		String canonicalName = canonicalName(beanName);
 		Set<String> dependentBeans = this.dependentBeanMap.get(canonicalName);
 		if (dependentBeans == null) {
 			return false;
 		}
+		// 如果依赖bean集合中包含指定的依赖bean，返回true
 		if (dependentBeans.contains(dependentBeanName)) {
 			return true;
 		}
@@ -490,8 +513,10 @@ public class DefaultSingletonBeanRegistry extends SimpleAliasRegistry implements
 				return true;
 			}
 		}
+		// 如果没有任何bean依赖于指定的依赖bean，返回false
 		return false;
 	}
+
 
 	/**
 	 * Determine whether a dependent bean has been registered for the given name.

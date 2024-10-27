@@ -16,16 +16,15 @@
 
 package org.springframework.aop.config;
 
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.TypedStringValue;
 import org.springframework.beans.factory.support.ManagedList;
 import org.springframework.beans.factory.xml.BeanDefinitionParser;
 import org.springframework.beans.factory.xml.ParserContext;
 import org.springframework.lang.Nullable;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 /**
  * {@link BeanDefinitionParser} for the {@code aspectj-autoproxy} tag,
@@ -38,10 +37,15 @@ import org.springframework.lang.Nullable;
  */
 class AspectJAutoProxyBeanDefinitionParser implements BeanDefinitionParser {
 
+	/**
+	 * 所有解析器，因为是对 BeanDefinitionParser 接口的统一实现，入口都是从 parse 函数开始的
+	 * 也就是说这里还在解析 BeanDefinition，传进来的 Element 还是那个 xml 解析出来的树结构
+	 */
 	@Override
 	@Nullable
 	public BeanDefinition parse(Element element, ParserContext parserContext) {
 		AopNamespaceUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary(parserContext, element);
+
 		extendBeanDefinition(element, parserContext);
 		return null;
 	}

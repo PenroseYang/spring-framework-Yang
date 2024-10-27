@@ -16,11 +16,11 @@
 
 package org.springframework.beans.factory.config;
 
-import java.beans.PropertyDescriptor;
-
 import org.springframework.beans.BeansException;
 import org.springframework.beans.PropertyValues;
 import org.springframework.lang.Nullable;
+
+import java.beans.PropertyDescriptor;
 
 /**
  * Subinterface of {@link BeanPostProcessor} that adds a before-instantiation callback,
@@ -40,32 +40,28 @@ import org.springframework.lang.Nullable;
  *
  * @author Juergen Hoeller
  * @author Rod Johnson
- * @since 1.2
  * @see org.springframework.aop.framework.autoproxy.AbstractAutoProxyCreator#setCustomTargetSourceCreators
  * @see org.springframework.aop.framework.autoproxy.target.LazyInitTargetSourceCreator
+ * @since 1.2
  */
 public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 
 	/**
-	 * Apply this BeanPostProcessor <i>before the target bean gets instantiated</i>.
-	 * The returned bean object may be a proxy to use instead of the target bean,
-	 * effectively suppressing default instantiation of the target bean.
-	 * <p>If a non-null object is returned by this method, the bean creation process
-	 * will be short-circuited. The only further processing applied is the
-	 * {@link #postProcessAfterInitialization} callback from the configured
-	 * {@link BeanPostProcessor BeanPostProcessors}.
-	 * <p>This callback will be applied to bean definitions with their bean class,
-	 * as well as to factory-method definitions in which case the returned bean type
-	 * will be passed in here.
-	 * <p>Post-processors may implement the extended
-	 * {@link SmartInstantiationAwareBeanPostProcessor} interface in order
-	 * to predict the type of the bean object that they are going to return here.
-	 * <p>The default implementation returns {@code null}.
-	 * @param beanClass the class of the bean to be instantiated
-	 * @param beanName the name of the bean
-	 * @return the bean object to expose instead of a default instance of the target bean,
-	 * or {@code null} to proceed with default instantiation
-	 * @throws org.springframework.beans.BeansException in case of errors
+	 * 在目标bean实例化<i>之前</i>应用此BeanPostProcessor。
+	 * 返回的bean对象可能是一个代理，用于替代目标bean，有效地抑制了目标bean的默认实例化。
+	 * <p>如果此方法返回一个非空对象，bean创建过程将被短路。唯一进一步应用的处理是来自配置的
+	 * {@link BeanPostProcessor BeanPostProcessors}的{@link #postProcessAfterInitialization}回调。
+	 * <p>此回调将应用于具有其bean类的bean定义，以及工厂方法定义，在这种情况下，返回的bean类型
+	 * 将在这里传入。
+	 * <p>后处理器可以实现扩展的
+	 * {@link SmartInstantiationAwareBeanPostProcessor}接口，以便预测他们将在这里返回的bean对象的类型。
+	 * <p>默认实现返回{@code null}。
+	 *
+	 * @param beanClass 要实例化的bean的类
+	 * @param beanName  bean的名称
+	 * @return 要暴露的bean对象，而不是目标bean的默认实例，
+	 * 或者{@code null}以继续默认实例化
+	 * @throws org.springframework.beans.BeansException 如果出现错误
 	 * @see #postProcessAfterInstantiation
 	 * @see org.springframework.beans.factory.support.AbstractBeanDefinition#getBeanClass()
 	 * @see org.springframework.beans.factory.support.AbstractBeanDefinition#getFactoryMethodName()
@@ -81,7 +77,8 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 	 * <p>This is the ideal callback for performing custom field injection on the given bean
 	 * instance, right before Spring's autowiring kicks in.
 	 * <p>The default implementation returns {@code true}.
-	 * @param bean the bean instance created, with properties not having been set yet
+	 *
+	 * @param bean     the bean instance created, with properties not having been set yet
 	 * @param beanName the name of the bean
 	 * @return {@code true} if properties should be set on the bean; {@code false}
 	 * if property population should be skipped. Normal implementations should return {@code true}.
@@ -102,10 +99,11 @@ public interface InstantiationAwareBeanPostProcessor extends BeanPostProcessor {
 	 * creating a new MutablePropertyValues instance based on the original PropertyValues,
 	 * adding or removing specific values.
 	 * <p>The default implementation returns the given {@code pvs} as-is.
-	 * @param pvs the property values that the factory is about to apply (never {@code null})
-	 * @param pds the relevant property descriptors for the target bean (with ignored
-	 * dependency types - which the factory handles specifically - already filtered out)
-	 * @param bean the bean instance created, but whose properties have not yet been set
+	 *
+	 * @param pvs      the property values that the factory is about to apply (never {@code null})
+	 * @param pds      the relevant property descriptors for the target bean (with ignored
+	 *                 dependency types - which the factory handles specifically - already filtered out)
+	 * @param bean     the bean instance created, but whose properties have not yet been set
 	 * @param beanName the name of the bean
 	 * @return the actual property values to apply to the given bean (can be the passed-in
 	 * PropertyValues instance), or {@code null} to skip property population

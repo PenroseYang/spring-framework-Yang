@@ -28,8 +28,8 @@ import org.springframework.core.type.AnnotationMetadata;
  *
  * @author Chris Beams
  * @author Juergen Hoeller
- * @since 3.1
  * @see EnableAspectJAutoProxy
+ * @since 3.1
  */
 class AspectJAutoProxyRegistrar implements ImportBeanDefinitionRegistrar {
 
@@ -42,10 +42,18 @@ class AspectJAutoProxyRegistrar implements ImportBeanDefinitionRegistrar {
 	public void registerBeanDefinitions(
 			AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
 
+		// 跳
 		AopConfigUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary(registry);
 
 		AnnotationAttributes enableAspectJAutoProxy =
 				AnnotationConfigUtils.attributesFor(importingClassMetadata, EnableAspectJAutoProxy.class);
+
+		/*
+		 * 这里其实还是属性的修改，涉及到两个属性
+		 * (1) proxyTargetClass，这个属性如果设置成true的话，就是用CGLIB增强
+		 * (2) exposeProxy，如果这个属性设置成true，就能让调用自己本身这个里面方法的外置增强生效，比如@Transaction调用自身类的
+		 * @Transaction，第二个注解本不应该生效，因为调用的不是增强类。
+		 */
 		if (enableAspectJAutoProxy != null) {
 			if (enableAspectJAutoProxy.getBoolean("proxyTargetClass")) {
 				AopConfigUtils.forceAutoProxyCreatorToUseClassProxying(registry);

@@ -393,6 +393,10 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		return resolvedBeanNames;
 	}
 
+	/**
+	 * 这个方法挺懒得看的，这里就是根据 BeanDefinition，封装出来的 BeanHolder，拿着最底层的信息
+	 * 开始匹配 ClassType 类型
+	 */
 	private String[] doGetBeanNamesForType(ResolvableType type, boolean includeNonSingletons, boolean allowEagerInit) {
 		List<String> result = new ArrayList<>();
 
@@ -768,7 +772,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	//---------------------------------------------------------------------
 
 	/**
-	 * todo 上次看到这里，BeanName 和BeanDefinition都已经有了，就是等着往Map里面注册
+	 * BeanName 和BeanDefinition都已经有了，就是等着往Map里面注册
 	 */
 	@Override
 	public void registerBeanDefinition(String beanName, BeanDefinition beanDefinition)

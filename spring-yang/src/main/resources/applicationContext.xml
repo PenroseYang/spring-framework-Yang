@@ -5,4 +5,9 @@
 
 	<bean id="hello" class="yang.BookChapterTwo.Hello"></bean>
 
+	<bean id="person" class="yang.BookChapterTwo.Person">
+		<constructor-arg value="张三"/>
+		<constructor-arg value="30"/>
+	</bean>
+
 </beans>

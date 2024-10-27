@@ -756,11 +756,9 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	}
 
 	/**
-	 * Specify a callback for creating an instance of the bean,
-	 * as an alternative to a declaratively specified factory method.
-	 * <p>If such a callback is set, it will override any other constructor
-	 * or factory method metadata. However, bean property population and
-	 * potential annotation-driven injection will still apply as usual.
+	 * 指定一个回调来创建bean的实例，作为声明式指定工厂方法的替代方案。
+	 * <p>如果设置了这样的回调，它将覆盖任何其他构造函数或工厂方法元数据。
+	 * 然而，bean属性填充和潜在的注解驱动注入仍将照常应用。
 	 *
 	 * @see #setConstructorArgumentValues(ConstructorArgumentValues)
 	 * @see #setPropertyValues(MutablePropertyValues)
@@ -771,7 +769,7 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	}
 
 	/**
-	 * Return a callback for creating an instance of the bean, if any.
+	 * 如果有的话，返回创建bean实例的回调。
 	 *
 	 * @since 5.0
 	 */
@@ -781,22 +779,20 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	}
 
 	/**
-	 * Specify whether to allow access to non-public constructors and methods,
-	 * for the case of externalized metadata pointing to those. The default is
-	 * {@code true}; switch this to {@code false} for public access only.
-	 * <p>This applies to constructor resolution, factory method resolution,
-	 * and also init/destroy methods. Bean property accessors have to be public
-	 * in any case and are not affected by this setting.
-	 * <p>Note that annotation-driven configuration will still access non-public
-	 * members as far as they have been annotated. This setting applies to
-	 * externalized metadata in this bean definition only.
+	 * 指定是否允许访问非公开的构造函数和方法，
+	 * 适用于指向这些方法的外部化元数据的情况。默认值是{@code true}；
+	 * 将此切换为{@code false}仅允许公共访问。
+	 * <p>这适用于构造函数解析、工厂方法解析，以及初始化/销毁方法。
+	 * 无论如何，Bean属性访问器必须是公开的，并且不受此设置的影响。
+	 * <p>请注意，注解驱动的配置仍将访问非公开成员，只要它们已经被注解。
+	 * 此设置仅适用于此bean定义中的外部化元数据。
 	 */
 	public void setNonPublicAccessAllowed(boolean nonPublicAccessAllowed) {
 		this.nonPublicAccessAllowed = nonPublicAccessAllowed;
 	}
 
 	/**
-	 * Return whether to allow access to non-public constructors and methods.
+	 * 返回是否允许访问非公开的构造函数和方法。
 	 */
 	public boolean isNonPublicAccessAllowed() {
 		return this.nonPublicAccessAllowed;
@@ -1138,34 +1134,34 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	}
 
 	/**
-	 * Validate and prepare the method overrides defined for this bean.
-	 * Checks for existence of a method with the specified name.
+	 * 验证并准备这个bean定义的方法覆盖。
+	 * 检查是否存在指定名称的方法。
 	 *
-	 * @throws BeanDefinitionValidationException in case of validation failure
+	 * @throws BeanDefinitionValidationException 如果验证失败
 	 */
 	public void prepareMethodOverrides() throws BeanDefinitionValidationException {
-		// Check that lookup methods exist and determine their overloaded status.
+		// 检查查找方法是否存在并确定它们的重载状态。
 		if (hasMethodOverrides()) {
 			getMethodOverrides().getOverrides().forEach(this::prepareMethodOverride);
 		}
 	}
 
 	/**
-	 * Validate and prepare the given method override.
-	 * Checks for existence of a method with the specified name,
-	 * marking it as not overloaded if none found.
+	 * 验证并准备给定的方法覆盖。
+	 * 检查是否存在指定名称的方法，
+	 * 如果没有找到，则标记它为非重载的。
 	 *
-	 * @param mo the MethodOverride object to validate
-	 * @throws BeanDefinitionValidationException in case of validation failure
+	 * @param mo 要验证的MethodOverride对象
+	 * @throws BeanDefinitionValidationException 如果验证失败
 	 */
 	protected void prepareMethodOverride(MethodOverride mo) throws BeanDefinitionValidationException {
 		int count = ClassUtils.getMethodCountForName(getBeanClass(), mo.getMethodName());
 		if (count == 0) {
 			throw new BeanDefinitionValidationException(
-					"Invalid method override: no method with name '" + mo.getMethodName() +
-							"' on class [" + getBeanClassName() + "]");
+					"无效的方法覆盖：在类 [" + getBeanClassName() + "] 上没有名为 '" + mo.getMethodName() +
+							"' 的方法");
 		} else if (count == 1) {
-			// Mark override as not overloaded, to avoid the overhead of arg type checking.
+			// 将覆盖标记为非重载的，以避免参数类型检查的开销。
 			mo.setOverloaded(false);
 		}
 	}
